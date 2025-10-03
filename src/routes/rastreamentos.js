@@ -96,22 +96,25 @@ export default function rastreamentosRouter(pool) {
     const now = new Date();
     const diffDays = Math.max(0, Math.floor((now - created) / (1000*60*60*24)));
 
-    const events = etapas.map((e, idx) => {
-      const date = new Date(created);
-      date.setDate(created.getDate() + e.dia);
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth()+1).padStart(2,'0');
-      const dd = String(date.getDate()).padStart(2,'0');
-      return {
-        id: String(idx+1),
-        status: e.titulo,
-        description: e.mensagem,
-        location: `${s.bairro} - ${s.cep}`,
-        date: `${dd}/${mm}/${yyyy}`,
-        time: '08:00',
-        isCompleted: e.dia <= diffDays
-      };
-    }).reverse();
+    const events = etapas
+      .filter(e => e.dia <= diffDays) // apenas etapas já alcançadas
+      .map((e, idx) => {
+        const date = new Date(created);
+        date.setDate(created.getDate() + e.dia);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth()+1).padStart(2,'0');
+        const dd = String(date.getDate()).padStart(2,'0');
+        return {
+          id: String(idx+1),
+          status: e.titulo,
+          description: e.mensagem,
+          location: `${s.bairro} - ${s.cep}`,
+          date: `${dd}/${mm}/${yyyy}`,
+          time: '08:00',
+          isCompleted: true
+        };
+      })
+      .reverse();
 
     const packageInfo = {
       recipient: s.nome,
