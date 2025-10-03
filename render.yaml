@@ -1,0 +1,26 @@
+# Render Blueprint to deploy backend and provision a Postgres database
+# Docs: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: cargo-tracker-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cargo-tracker-db
+          property: connectionString
+      - key: PGSSL
+        value: "true"
+      - key: CORS_ORIGIN
+        value: "http://localhost:5173"
+
+# Managed Postgres (free tier may have limitations)
+databases:
+  - name: cargo-tracker-db
+    plan: free
