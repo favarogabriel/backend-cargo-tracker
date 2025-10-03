@@ -54,3 +54,36 @@ VITE_API_BASE_URL=http://localhost:8080
 - Ensure `PORT` is not hardcoded; the app uses the provided `PORT` env
 
 No build step is necessary for this plain JS backend.
+
+## Free alternatives (backend + banco)
+
+Se o Railway estiver limitado ao seu plano, você pode usar estas combinações gratuitas:
+
+1) Render (backend) + Render Postgres (free) ou Neon/Postgres (free)
+
+- Já inclui um `render.yaml` na raiz do repo. Passos:
+	- Conecte o repositório no Render
+	- Em Blueprints, aponte para o `render.yaml`
+	- Ele cria um serviço web (Node) com root `backend/` e um Postgres gerenciado
+	- O `DATABASE_URL` é injetado automaticamente no serviço web
+	- Ajuste `CORS_ORIGIN` nas envVars do serviço se for usar um domínio do frontend
+
+2) Koyeb (backend via Docker) + Neon (Postgres)
+
+- Neon: crie um banco gratuito e copie o `postgresql://...` (inclua sslmode=require)
+- Koyeb:
+	- Novo App → Dockerfile do repositório → escolha a pasta `backend/`
+	- Variables: `DATABASE_URL` (da Neon), `PGSSL=true`, `CORS_ORIGIN=https://seu-frontend`
+	- Start command: `npm start` (Dockerfile já expõe 8080)
+
+3) Fly.io (backend) + Neon ou Supabase (Postgres)
+
+- Suba o backend no Fly com `fly launch` (precisa ter `fly.toml`)
+- Configure `DATABASE_URL`, `PGSSL=true`, `CORS_ORIGIN`
+
+Depois do deploy, defina no frontend:
+
+```
+VITE_API_BASE_URL=https://<sua-api>
+VITE_ADMIN_KEY=<sua-chave>
+```
