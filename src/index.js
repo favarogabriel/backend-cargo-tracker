@@ -8,8 +8,16 @@ import rastreamentosRouter from './routes/rastreamentos.js';
 import etapasRouter from './routes/etapas.js';
 
 const app = express();
-const allowedOrigin = process.env.CORS_ORIGIN || '*';
-app.use(cors({ origin: allowedOrigin }));
+const rawOrigins = (process.env.CORS_ORIGIN || '*').split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // non-browser or same-origin
+    if (rawOrigins.includes('*')) return callback(null, true);
+    if (rawOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS not allowed for origin: ' + origin));
+  },
+  credentials: false
+}));
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));
