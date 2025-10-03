@@ -3,9 +3,29 @@ import express from 'express';
 export default function rastreamentosRouter(pool) {
   const router = express.Router();
 
-  // Create shipment from manual page
+  // Generate a new tracking code (9 digits) formatted as 000 000 000
+  router.post('/gerar', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'DB not configured' });
+    try {
+      let raw;
+      // ensure uniqueness in DB
+      for (let i = 0; i < 5; i++) {
+        raw = String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0');
+        const { rows } = await pool.query('select 1 from shipments where codigo=$1 limit 1', [raw]);
+        if (rows.length === 0) break;
+        raw = undefined;
+      }
+      if (!raw) return res.status(500).json({ error: 'Falha ao gerar código único' });
+      const formatted = raw.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+      res.json({ codigo: raw, codigoFormatado: formatted });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Create or update shipment from manual page (produto removed)
   router.post('/manual', async (req, res) => {
-    const required = ['nome','email','telefone','rua','numero','bairro','cep','codigo','produto'];
+    const required = ['nome','email','telefone','rua','numero','bairro','cep','codigo'];
     for (const k of required) {
       if (!String(req.body?.[k] ?? '').trim()) {
         return res.status(400).json({ error: `Campo obrigatório ausente: ${k}` });
@@ -15,7 +35,13 @@ export default function rastreamentosRouter(pool) {
     if (!pool) return res.status(503).json({ error: 'DB not configured' });
 
     try {
-      const { nome, email, telefone, rua, numero, bairro, cep, codigo, produto } = req.body;
+      const { nome, email, telefone, rua, numero, bairro, cep } = req.body;
+      // código pode vir formatado com espaços
+      let codigo = String(req.body.codigo).replace(/\s+/g,'');
+      if (!/^\d{9}$/.test(codigo)) {
+        return res.status(400).json({ error: 'Código deve conter 9 dígitos' });
+      }
+      const produto = '';
       const { rows } = await pool.query(
         `insert into shipments (nome,email,telefone,rua,numero,bairro,cep,codigo,produto)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -42,7 +68,8 @@ export default function rastreamentosRouter(pool) {
 
   // Get tracking details for a given code
   router.get('/:codigo', async (req, res) => {
-    const codigo = req.params.codigo;
+    const codigoRaw = req.params.codigo;
+    const codigo = codigoRaw.replace(/\s+/g,'');
     if (!codigo) return res.status(400).json({ error: 'codigo é obrigatório' });
 
     if (!pool) {
@@ -59,7 +86,7 @@ export default function rastreamentosRouter(pool) {
       });
     }
 
-    const { rows: shipRows } = await pool.query('select * from shipments where codigo=$1', [codigo]);
+  const { rows: shipRows } = await pool.query('select * from shipments where codigo=$1', [codigo]);
     if (shipRows.length === 0) return res.status(404).json({ error: 'Código não encontrado' });
     const s = shipRows[0];
 

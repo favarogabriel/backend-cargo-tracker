@@ -36,10 +36,20 @@ async function migrate(pool) {
       bairro text not null,
       cep text not null,
       codigo text not null unique,
-      produto text not null,
+      produto text,
       status text not null default 'Em trânsito',
       created_at timestamp not null default now()
     );
+    -- ensure produto nullable if previously created as NOT NULL
+    do $$
+    begin
+      begin
+        alter table shipments alter column produto drop not null;
+      exception when others then
+        -- ignore if already nullable
+        null;
+      end;
+    end$$;
   `);
 
   // Seed default etapas if none

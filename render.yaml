@@ -18,7 +18,7 @@ services:
       - key: PGSSL
         value: "true"
       - key: CORS_ORIGIN
-        value: "http://localhost:5173"
+        value: "http://localhost:8080"
 
 # Managed Postgres (free tier may have limitations)
 databases:
