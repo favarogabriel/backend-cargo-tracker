@@ -90,11 +90,24 @@ export default function rastreamentosRouter(pool) {
     if (shipRows.length === 0) return res.status(404).json({ error: 'Código não encontrado' });
     const s = shipRows[0];
 
-    const { rows: etapas } = await pool.query('select dia, titulo, mensagem from etapas order by dia asc');
+  const { rows: etapas } = await pool.query('select dia, titulo, mensagem from etapas order by dia asc');
     // Compute events based on difference in days from created_at
     const created = new Date(s.created_at);
     const now = new Date();
     const diffDays = Math.max(0, Math.floor((now - created) / (1000*60*60*24)));
+
+    const maxDia = etapas.length ? Math.max(...etapas.map(e => e.dia)) : 0;
+
+    // Se já atingiu o último dia e status ainda não é Entregue, atualiza
+    if (diffDays >= maxDia && s.status !== 'Entregue') {
+      try {
+        await pool.query('update shipments set status=$1 where id=$2', ['Entregue', s.id]);
+        s.status = 'Entregue';
+      } catch (e) {
+        // log silencioso; não falha a resposta
+        console.warn('Falha ao atualizar status para Entregue', e.message);
+      }
+    }
 
     const events = etapas
       .filter(e => e.dia <= diffDays) // apenas etapas já alcançadas
@@ -122,6 +135,7 @@ export default function rastreamentosRouter(pool) {
       destination: s.cep,
       estimatedDelivery: events[0]?.date || '',
       status: s.status,
+      delivered: s.status === 'Entregue'
     };
 
     res.json({ packageInfo, events });
